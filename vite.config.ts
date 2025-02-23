@@ -1,35 +1,48 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
-import path, { dirname } from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { fileURLToPath } from "url";
+import path from 'path'
+import { defineConfig, loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
+import envCompatible from 'vite-plugin-env-compatible'
+import { createHtmlPlugin } from 'vite-plugin-html'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    themePlugin(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "client", "src"),
-      "@shared": path.resolve(__dirname, "shared"),
-    },
-  },
-  root: path.resolve(__dirname, "client"),
-  build: {
-    outDir: path.resolve(__dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-});
+const ENV_PREFIX = 'REACT_APP_'
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, 'env', ENV_PREFIX)
+
+    return {
+        plugins: [
+            react(),
+            envCompatible({ prefix: ENV_PREFIX }),
+            createHtmlPlugin({
+                inject: {
+                    data: {
+                        env: {
+                            NODE_ENV: process.env.NODE_ENV,
+                            REACT_APP_CLIENT_TOKEN: process.env.REACT_APP_CLIENT_TOKEN,
+                            REACT_APP_ENV: process.env.REACT_APP_ENV
+                        }
+                    }
+                },
+                minify: true
+            })
+        ],
+        test: {
+            globals: true,
+            environment: 'jsdom',
+            setupFiles: ['./src/setupTests.js']
+        },
+        resolve: {
+            alias: {
+                '~': path.resolve(__dirname, 'src')
+            }
+        },
+        server: {
+            port: 3000,
+            open: env.SERVER_OPEN_BROWSER === 'true'
+        },
+        build: {
+            outDir: 'build'
+        }
+    }
+})

@@ -25,7 +25,7 @@ export interface User {
   totalPayout: number
   totalReferrals: number
   referralLink: string
-  referrals: string[] // Array of user IDs who joined using this user's referral
+  referrals: string[]
   avatar: string
   isAdmin?: boolean
   createdAt: string
@@ -40,7 +40,7 @@ export interface ReferralNode {
 
 // Helper function to get deployment URL
 function getDeploymentUrl() {
-  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+  return `${process.env.NEXT_PUBLIC_BASE_URL}`;
 }
 
 export async function getUsers(): Promise<User[]> {

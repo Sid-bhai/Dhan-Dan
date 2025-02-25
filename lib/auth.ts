@@ -26,10 +26,27 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           image: user.avatar,
+          isAdmin: user.isAdmin,
         }
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+        token.isAdmin = user.isAdmin
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string
+        session.user.isAdmin = token.isAdmin as boolean
+      }
+      return session
+    },
+  },
   pages: {
     signIn: "/login",
     signOut: "/login",
@@ -38,19 +55,20 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-      }
-      return session
-    },
-  },
+}
+
+export async function verifyAdmin(request: Request): Promise<boolean> {
+  const authHeader = request.headers.get("Authorization")
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return false
+  }
+
+  const token = authHeader.split(" ")[1]
+  try {
+    const user = await getUserByUsername(token)
+    return user?.isAdmin === true
+  } catch {
+    return false
+  }
 }
 

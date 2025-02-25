@@ -5,23 +5,38 @@ import jwt from "jsonwebtoken"
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const { fullName, username, email, password, state, referCode } = body
+  try {
+    const body = await request.json()
+    const { fullName, username, email, password, state, referCode } = body
 
-  if (!fullName || !username || !email || !password || !state) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    if (!fullName || !username || !email || !password || !state) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    const existingUser = await getUserByUsername(username)
+    if (existingUser) {
+      return NextResponse.json({ error: "Username already exists" }, { status: 400 })
+    }
+
+    const newUser = await createUser({
+      name: fullName,
+      username,
+      email,
+      password,
+      state,
+      referCode,
+      phone: "",
+      avatar: "/placeholder.svg?height=128&width=128",
+    })
+
+    const token = jwt.sign({ userId: newUser.id }, process.env.JWT_SECRET || "your-secret-key", { expiresIn: "1d" })
+
+    const { password: _, ...userWithoutPassword } = newUser
+
+    return NextResponse.json({ user: userWithoutPassword, token }, { status: 201 })
+  } catch (error) {
+    console.error("Registration error:", error)
+    return NextResponse.json({ error: "An error occurred during registration. Please try again." }, { status: 500 })
   }
-
-  const existingUser = await getUserByUsername(username)
-  if (existingUser) {
-    return NextResponse.json({ error: "Username already exists" }, { status: 400 })
-  }
-
-  const newUser = await createUser({ fullName, username, email, password, state, referCode })
-  const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: "1d" })
-
-  const { password: _, ...userWithoutPassword } = newUser
-
-  return NextResponse.json({ user: userWithoutPassword, token }, { status: 201 })
 }
 

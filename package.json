@@ -60,8 +60,8 @@
     "@auth/core": "latest",
     "nodemailer": "latest",
     "next-auth": "latest",
-    "@vercel/blob": "latest",
-    "jsonwebtoken": "latest"
+    "jsonwebtoken": "latest",
+    "@vercel/blob": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

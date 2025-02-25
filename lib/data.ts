@@ -22,26 +22,43 @@ export interface User {
 export async function getUsers(): Promise<User[]> {
   try {
     const { blobs } = await list()
+    // Check if users.json exists
     const usersBlob = blobs.find((blob) => blob.pathname === "users.json")
-    if (!usersBlob) return []
+
+    if (!usersBlob) {
+      // If no users file exists, create one with empty array
+      await saveUsers([])
+      return []
+    }
 
     const response = await fetch(usersBlob.url)
+    if (!response.ok) {
+      console.error("Error fetching users:", response.statusText)
+      return []
+    }
+
     const users = await response.json()
     return users as User[]
   } catch (error) {
     console.error("Error reading users:", error)
+    // Return empty array instead of throwing error
     return []
   }
 }
 
 export async function saveUsers(users: User[]) {
   try {
-    const blob = new Blob([JSON.stringify(users)], {
+    const blob = new Blob([JSON.stringify(users, null, 2)], {
       type: "application/json",
     })
-    await put("users.json", blob, { access: "public" })
+
+    await put("users.json", blob, {
+      access: "public",
+      addRandomSuffix: false, // Ensure we always update the same file
+    })
   } catch (error) {
     console.error("Error saving users:", error)
+    throw new Error("Failed to save users data")
   }
 }
 

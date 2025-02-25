@@ -72,15 +72,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify(userData),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Registration failed")
+        throw new Error(data.error || "Registration failed")
       }
 
-      const { user } = await response.json()
-      localStorage.setItem("user", JSON.stringify(user))
-      setUser(user)
+      localStorage.setItem("user", JSON.stringify(data.user))
+      setUser(data.user)
       router.push("/dashboard")
+    } catch (error) {
+      console.error("Registration error:", error)
+      throw error
     } finally {
       setIsLoading(false)
     }

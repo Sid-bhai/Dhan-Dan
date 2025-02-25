@@ -38,11 +38,6 @@ export interface ReferralNode {
   right?: ReferralNode
 }
 
-// Helper function to get deployment URL
-function getDeploymentUrl() {
-  return `${process.env.NEXT_PUBLIC_BASE_URL}`;
-}
-
 export async function getUsers(): Promise<User[]> {
   try {
     const { blobs } = await list()
@@ -124,7 +119,6 @@ export async function getUserByUsername(username: string): Promise<User | undefi
 
 export async function createUser(userData: Omit<User, "id" | "createdAt" | "referrals">): Promise<User> {
   const users = await getUsers()
-  const deploymentUrl = getDeploymentUrl()
 
   const newUser: User = {
     ...userData,
@@ -133,7 +127,7 @@ export async function createUser(userData: Omit<User, "id" | "createdAt" | "refe
     totalCommission: 0,
     totalPayout: 0,
     totalReferrals: 0,
-    referralLink: `${deploymentUrl}/register?ref=${userData.username}`,
+    referralLink: `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${userData.username}`,
     referrals: [],
     createdAt: new Date().toISOString(),
     avatar: userData.avatar || "/placeholder.svg?height=128&width=128",

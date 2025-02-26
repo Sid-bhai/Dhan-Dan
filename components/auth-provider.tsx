@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
+import type { User } from "@/lib/data"
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import type { User } from "@/lib/data"
 
 type AuthContextType = {
   user: User | null
@@ -27,13 +27,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
+    const checkSession = async () => {
+      try {
+        const storedUser = localStorage.getItem("user")
+        const storedToken = localStorage.getItem("token")
+
+        if (storedUser && storedToken) {
+          // Verify token is still valid
+          const response = await fetch("/api/user", {
+            headers: {
+              Authorization: `Bearer ${storedToken}`,
+            },
+          })
+
+          if (response.ok) {
+            setUser(JSON.parse(storedUser))
+            // If on landing page, redirect to dashboard
+            if (window.location.pathname === "/") {
+              router.replace("/dashboard")
+            }
+          } else {
+            // Clear invalid session
+            localStorage.removeItem("user")
+            localStorage.removeItem("token")
+            if (window.location.pathname !== "/" && !window.location.pathname.includes("/login")) {
+              router.replace("/login")
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Session check error:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
-  }, [])
+
+    checkSession()
+  }, [router])
 
   const login = async (username: string, password: string) => {
     setIsLoading(true)
@@ -44,14 +76,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ username, password }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Login failed")
+        throw new Error(data.error || "Login failed")
       }
 
-      const { user } = await response.json()
-      localStorage.setItem("user", JSON.stringify(user))
-      setUser(user)
-      router.push("/dashboard")
+      localStorage.setItem("user", JSON.stringify(data.user))
+      localStorage.setItem("token", data.token)
+      setUser(data.user)
+      router.replace("/dashboard")
+    } catch (error) {
+      console.error("Login error:", error)
+      throw error
     } finally {
       setIsLoading(false)
     }
@@ -59,8 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("user")
+    localStorage.removeItem("token")
     setUser(null)
-    router.push("/login")
+    router.replace("/login")
   }
 
   const register = async (userData: Omit<User, "id">) => {
@@ -79,8 +117,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       localStorage.setItem("user", JSON.stringify(data.user))
+      localStorage.setItem("token", data.token)
       setUser(data.user)
-      router.push("/dashboard")
+      router.replace("/dashboard")
     } catch (error) {
       console.error("Registration error:", error)
       throw error

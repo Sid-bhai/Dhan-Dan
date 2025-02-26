@@ -127,7 +127,7 @@ export async function createUser(userData: Omit<User, "id" | "createdAt" | "refe
     totalCommission: 0,
     totalPayout: 0,
     totalReferrals: 0,
-    referralLink: `${process.env.NEXT_PUBLIC_BASE_URL}/register?ref=${userData.username}`,
+    referralLink: `${process.env.NEXT_PUBLIC_BASE_URL}register?ref=${userData.username}`,
     referrals: [],
     createdAt: new Date().toISOString(),
     avatar: userData.avatar || "/placeholder.svg?height=128&width=128",

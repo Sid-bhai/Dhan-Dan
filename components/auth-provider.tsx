@@ -4,7 +4,7 @@ import type React from "react"
 import type { User } from "@/lib/data"
 
 import { createContext, useContext, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 
 type AuthContextType = {
   user: User | null
@@ -22,12 +22,15 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
 })
 
+const PUBLIC_PATHS = ["/", "/login", "/register", "/about", "/terms", "/privacy"]
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
 
-  // Check for existing session on mount
+  // Check for existing session on mount and route changes
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -36,36 +39,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (storedUser && storedToken) {
           // Verify token is still valid
-          const response = await fetch("/api/user", {
+          const response = await fetch("/api/auth/validate", {
             headers: {
               Authorization: `Bearer ${storedToken}`,
             },
           })
+          const data = await response.json()
 
-          if (response.ok) {
-            setUser(JSON.parse(storedUser))
-            // If on landing page, redirect to dashboard
-            if (window.location.pathname === "/") {
+          if (data.valid) {
+            const userData = JSON.parse(storedUser)
+            setUser(userData)
+
+            // Redirect to dashboard if on public page
+            if (PUBLIC_PATHS.includes(pathname)) {
               router.replace("/dashboard")
             }
           } else {
             // Clear invalid session
             localStorage.removeItem("user")
             localStorage.removeItem("token")
-            if (window.location.pathname !== "/" && !window.location.pathname.includes("/login")) {
+            setUser(null)
+            if (!PUBLIC_PATHS.includes(pathname)) {
               router.replace("/login")
             }
           }
+        } else if (!PUBLIC_PATHS.includes(pathname)) {
+          // No session and on protected route
+          router.replace("/login")
         }
       } catch (error) {
         console.error("Session check error:", error)
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
+        setUser(null)
+        if (!PUBLIC_PATHS.includes(pathname)) {
+          router.replace("/login")
+        }
       } finally {
         setIsLoading(false)
       }
     }
 
     checkSession()
-  }, [router])
+  }, [pathname, router])
 
   const login = async (username: string, password: string) => {
     setIsLoading(true)
@@ -79,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed")
+        throw new Error(data.error || "Invalid username or password")
       }
 
       localStorage.setItem("user", JSON.stringify(data.user))

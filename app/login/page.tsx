@@ -37,12 +37,17 @@ export default function LoginPage() {
     setIsSubmitting(true)
     try {
       await login(username, password)
+      toast({
+        title: "Login Successful",
+        description: "Welcome back to Dhan Dan!",
+      })
     } catch (error) {
       toast({
         title: "Login Failed",
         description: error instanceof Error ? error.message : "Invalid username or password",
         variant: "destructive",
       })
+      setPassword("")
     } finally {
       setIsSubmitting(false)
     }

@@ -16,6 +16,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
 
   useEffect(() => {
+    // Only redirect if not loading and no user
     if (!isLoading && !user) {
       router.replace("/login")
     }
@@ -35,6 +36,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return null
   }
 
+  // User is authenticated, render children
   return <>{children}</>
 }
 

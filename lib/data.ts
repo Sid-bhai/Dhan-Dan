@@ -25,7 +25,7 @@ export interface User {
   totalPayout: number
   totalReferrals: number
   referralLink: string
-  referrals: string[]
+  referrals: string[] // Array of user IDs who joined using this user's referral
   avatar: string
   isAdmin?: boolean
   createdAt: string

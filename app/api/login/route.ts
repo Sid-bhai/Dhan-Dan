@@ -19,7 +19,16 @@ export async function POST(request: Request) {
     const token = await createToken({ userId: user.username })
     const { password: _, ...userWithoutPassword } = user
 
-    return NextResponse.json({ user: userWithoutPassword, token })
+    // Set cookies for better session management
+    const response = NextResponse.json({ user: userWithoutPassword, token })
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    })
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json({ error: "An error occurred during login" }, { status: 500 })

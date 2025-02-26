@@ -46,18 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userData = JSON.parse(storedUser)
             setUser(userData)
 
-            // Only redirect if not already on dashboard
+            // Only redirect if on login or register page
             if (pathname === "/login" || pathname === "/register") {
               router.replace("/dashboard")
             }
           } else {
             // Clear invalid session
-            localStorage.removeItem("user")
-            localStorage.removeItem("token")
-            setUser(null)
-            if (!PUBLIC_PATHS.includes(pathname)) {
-              router.replace("/login")
-            }
+            handleLogout()
           }
         } else if (!PUBLIC_PATHS.includes(pathname)) {
           // No session and on protected route
@@ -65,12 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Session check error:", error)
-        localStorage.removeItem("user")
-        localStorage.removeItem("token")
-        setUser(null)
-        if (!PUBLIC_PATHS.includes(pathname)) {
-          router.replace("/login")
-        }
+        handleLogout()
       } finally {
         setIsLoading(false)
       }
@@ -78,6 +68,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     checkSession()
   }, [pathname, router])
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("token")
+    setUser(null)
+    if (!PUBLIC_PATHS.includes(pathname)) {
+      router.replace("/login")
+    }
+  }
 
   const login = async (username: string, password: string) => {
     setIsLoading(true)
@@ -94,23 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Invalid username or password")
       }
 
+      // Store user data and token
       localStorage.setItem("user", JSON.stringify(data.user))
       localStorage.setItem("token", data.token)
+
+      // Update state and redirect
       setUser(data.user)
       router.replace("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
+      handleLogout()
       throw error
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const logout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    setUser(null)
-    router.replace("/login")
   }
 
   const register = async (userData: Omit<User, "id">) => {
@@ -128,26 +124,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Registration failed")
       }
 
-      // Set user and token immediately after successful registration
+      // Store user data and token
       localStorage.setItem("user", JSON.stringify(data.user))
       localStorage.setItem("token", data.token)
+
+      // Update state
       setUser(data.user)
 
-      // Only redirect after state is updated
-      setTimeout(() => {
-        router.replace("/dashboard")
-      }, 100)
+      // Wait a bit before redirecting to ensure state is updated
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      router.replace("/dashboard")
 
       return data
     } catch (error) {
       console.error("Registration error:", error)
+      handleLogout()
       throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  return <AuthContext.Provider value={{ user, isLoading, login, logout, register }}>{children}</AuthContext.Provider>
+  const logout = () => {
+    handleLogout()
+  }
+
+  const contextValue = {
+    user,
+    isLoading,
+    login,
+    logout,
+    register,
+  }
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

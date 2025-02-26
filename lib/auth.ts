@@ -24,6 +24,7 @@ export async function verifyToken(token: string) {
     const { payload } = await jwtVerify(token, JWT_SECRET)
     return payload
   } catch (error) {
+    console.error("Token verification error:", error)
     return null
   }
 }
@@ -31,8 +32,13 @@ export async function verifyToken(token: string) {
 export async function validateToken(token: string) {
   try {
     const payload = await verifyToken(token)
-    return !!payload
+    if (!payload) return false
+
+    // Additional validation - check if user exists
+    const user = await getUserByUsername(payload.userId as string)
+    return !!user
   } catch (error) {
+    console.error("Token validation error:", error)
     return false
   }
 }
@@ -56,54 +62,40 @@ export async function verifyAdmin(req: NextRequest): Promise<boolean> {
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
+      name: "credentials",
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
-          throw new Error("Please enter both username and password")
+          return null
         }
 
         const user = await getUserByUsername(credentials.username)
         if (!user || user.password !== credentials.password) {
-          throw new Error("Invalid username or password")
+          return null
         }
 
         return {
-          id: user.id,
+          id: user.username,
           name: user.name,
           email: user.email,
-          image: user.avatar,
-          isAdmin: user.isAdmin,
         }
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-    signOut: "/login",
+  session: {
+    strategy: "jwt",
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.isAdmin = user.isAdmin
-      }
-      return token
+      return { ...token, ...user }
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.isAdmin = token.isAdmin as boolean
-      }
+      session.user = token as any
       return session
     },
   },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/login",
   },
 }
 

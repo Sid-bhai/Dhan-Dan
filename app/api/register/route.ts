@@ -30,7 +30,16 @@ export async function POST(request: Request) {
     const token = await createToken({ userId: newUser.username })
     const { password: _, ...userWithoutPassword } = newUser
 
-    return NextResponse.json({ user: userWithoutPassword, token }, { status: 201 })
+    // Set cookies for better session management
+    const response = NextResponse.json({ user: userWithoutPassword, token }, { status: 201 })
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    })
+
+    return response
   } catch (error) {
     console.error("Registration error:", error)
     return NextResponse.json({ error: "An error occurred during registration. Please try again." }, { status: 500 })

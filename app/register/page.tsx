@@ -93,7 +93,7 @@ export default function RegisterPage() {
         title: "Registration Successful",
         description: "You have successfully registered. Welcome to Dhan Dan!",
       })
-      // Router.push is handled in the register function now
+      router.push("/dashboard")
     } catch (error) {
       toast({
         title: "Registration Failed",

@@ -21,10 +21,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [isLoading, user, router])
 
+  // Show loading spinner while checking auth state
   if (isLoading) {
-    return <LoadingSpinner />
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    )
   }
 
+  // Don't render anything if not authenticated
   if (!user) {
     return null
   }

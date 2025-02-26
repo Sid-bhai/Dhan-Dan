@@ -5,6 +5,7 @@ import type { User } from "@/lib/data"
 
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { validateToken } from "@/lib/auth"
 
 type AuthContextType = {
   user: User | null
@@ -39,19 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (storedUser && storedToken) {
           // Verify token is still valid
-          const response = await fetch("/api/auth/validate", {
-            headers: {
-              Authorization: `Bearer ${storedToken}`,
-            },
-          })
-          const data = await response.json()
+          const isValid = await validateToken(storedToken)
 
-          if (data.valid) {
+          if (isValid) {
             const userData = JSON.parse(storedUser)
             setUser(userData)
 
-            // Redirect to dashboard if on public page
-            if (PUBLIC_PATHS.includes(pathname)) {
+            // Only redirect if not already on dashboard
+            if (pathname === "/login" || pathname === "/register") {
               router.replace("/dashboard")
             }
           } else {
@@ -132,10 +128,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || "Registration failed")
       }
 
+      // Set user and token immediately after successful registration
       localStorage.setItem("user", JSON.stringify(data.user))
       localStorage.setItem("token", data.token)
       setUser(data.user)
-      router.replace("/dashboard")
+
+      // Only redirect after state is updated
+      setTimeout(() => {
+        router.replace("/dashboard")
+      }, 100)
+
+      return data
     } catch (error) {
       console.error("Registration error:", error)
       throw error
